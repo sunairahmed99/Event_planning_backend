@@ -27,7 +27,7 @@ app.use(
                 scriptSrc: ["'self'", "'unsafe-inline'"],
                 styleSrc: ["'self'", "'unsafe-inline'"],
                 imgSrc: ["'self'", "data:", "https://images.unsplash.com", "https://res.cloudinary.com", "https://placehold.co", "*"],
-                connectSrc: ["'self'", "http://localhost:9000", "http://127.0.0.1:9000", "https://mern1-theta.vercel.app", "wss://mern1-theta.vercel.app"],
+                connectSrc: ["'self'", "http://localhost:9000", "http://127.0.0.1:9000", "https://event-planning-backend.vercel.app/", "wss://mern1-theta.vercel.app"],
             },
         },
     })
