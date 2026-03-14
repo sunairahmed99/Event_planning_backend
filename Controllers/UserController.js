@@ -359,7 +359,7 @@ export const googleAuthCallback = async (req, res) => {
     );
 
     // Redirect to frontend with token in query params
-    const frontendUrl = "http://localhost:5173";
+    const frontendUrl = "http://localhost:5173"; 
     res.redirect(`${frontendUrl}?token=${token}`);
   } catch (error) {
     console.error("GOOGLE CALLBACK ERROR:", error);

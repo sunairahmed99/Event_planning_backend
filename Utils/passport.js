@@ -10,7 +10,7 @@ passport.use(
     {
       clientID: process.env.Googleclientid,
       clientSecret: process.env.Googleclientsecret,
-      callbackURL: '/user/auth/google/callback',
+      callbackURL: 'https://mern1-theta.vercel.app/user/auth/google/callback',
       proxy: true,
     },
     async (accessToken, refreshToken, profile, done) => {
