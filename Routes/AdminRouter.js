@@ -29,9 +29,9 @@ AdminRouter.delete("/categories/:id", deleteCategory);
 AdminRouter.patch("/categories/:id/home", toggleCategoryHome);
 
 // Event Management Routes
-AdminRouter.post("/events", upload.array('images', 5), createEvent);
+AdminRouter.post("/events", upload.array('images', 10), createEvent);
 AdminRouter.get("/events", getEvents);
-AdminRouter.put("/events/:id", upload.array('images', 5), updateEvent);
+AdminRouter.put("/events/:id", upload.array('images', 10), updateEvent);
 AdminRouter.delete("/events/:id", deleteEvent);
 
 // Chat Management Routes

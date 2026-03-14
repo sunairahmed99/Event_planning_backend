@@ -41,7 +41,7 @@ const seedReviews = async () => {
 
                 await Review.create({
                     userName: user.name,
-                    userImage: user.image || 'https://via.placeholder.com/150',
+                    userImage: user.image || 'https://placehold.co/150',
                     rating: randomRating,
                     comment: `${randomReview} (Review ${i + 1} by ${user.name})`,
                     isApproved: true, // Auto-approve for seeding

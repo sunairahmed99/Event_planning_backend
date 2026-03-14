@@ -16,6 +16,8 @@ const app = express();
 
 dotenv.config({ quiet: true });
 
+app.set('trust proxy', 1);
+
 
 app.use(
     helmet({
@@ -24,8 +26,8 @@ app.use(
                 defaultSrc: ["'self'"],
                 scriptSrc: ["'self'", "'unsafe-inline'"],
                 styleSrc: ["'self'", "'unsafe-inline'"],
-                imgSrc: ["'self'", "data:", "https://images.unsplash.com", "https://res.cloudinary.com", "http://via.placeholder.com", "*"],
-                connectSrc: ["'self'", "http://localhost:9000", "http://127.0.0.1:9000", "https://mern1-theta.vercel.app"],
+                imgSrc: ["'self'", "data:", "https://images.unsplash.com", "https://res.cloudinary.com", "https://placehold.co", "*"],
+                connectSrc: ["'self'", "http://localhost:9000", "http://127.0.0.1:9000", "https://mern1-theta.vercel.app", "wss://mern1-theta.vercel.app"],
             },
         },
     })

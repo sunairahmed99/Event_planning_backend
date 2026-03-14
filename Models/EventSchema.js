@@ -34,7 +34,6 @@ const eventSchema = new mongoose.Schema(
         images: {
             type: [String],
             required: true,
-            validate: [arrayLimit, '{PATH} must have at least 5 images']
         },
     },
     {
@@ -42,9 +41,6 @@ const eventSchema = new mongoose.Schema(
     }
 );
 
-function arrayLimit(val) {
-    return val.length >= 5;
-}
 
 const Event = mongoose.model("Event", eventSchema);
 
