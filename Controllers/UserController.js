@@ -123,9 +123,9 @@ export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email, verifyuser: true });
-    if (!user) {
-      return res.status(400).json({ success: false, message: "Invalid credentials" });
+    const user = await User.findOne({ email });
+    if (!user || !user.verifyuser) {
+      return res.status(400).json({ success: false, message: "User not registered" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -165,6 +165,9 @@ export const forgotpassword = async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
+    if (!user.verifyuser) {
+      return res.status(403).json({ success: false, message: "Please verify your email first" });
+    }
 
     const code = Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -192,6 +195,9 @@ export const resetpassword = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
+    }
+    if (!user.verifyuser) {
+      return res.status(403).json({ success: false, message: "Please verify your email first" });
     }
 
     if (Number(user.forgotcode) !== Number(code) || user.forgotcodeexp < Date.now()) {
