@@ -7,8 +7,10 @@ import { Readable } from "stream";
 
 /* ================= REGISTER ================= */
 export const registerUser = async (req, res) => {
+  console.log("Registration request received for:", req.body.email);
   try {
     const { name, email, password, cpassword, phone } = req.body;
+    console.log("Body fields:", { name, email, phone, hasPassword: !!password });
 
     if (!name || !email || !password || !cpassword || !phone) {
       return res.status(400).json({ success: false, message: "All fields are required" });
@@ -36,6 +38,10 @@ export const registerUser = async (req, res) => {
 
     let imageResult = null;
     if (req.file) {
+      if (req.file.size > 10 * 1024 * 1024) {
+        return res.status(400).json({ success: false, message: "Image size is too large. Maximum allowed size is 10MB. Please compress your image." });
+      }
+
       const uploadStream = () => {
         return new Promise((resolve, reject) => {
           const stream = cloudinary.uploader.upload_stream(
@@ -50,23 +56,28 @@ export const registerUser = async (req, res) => {
       };
       try {
         imageResult = await uploadStream();
+        console.log("Image uploaded to Cloudinary");
       } catch (error) {
-        console.error("Cloudinary Error:", error);
-        // Proceed without image or return error? User asked to save image, so failure might be critical.
-        // But usually registration shouldn't fail if image upload fails?
-        // "to image cloudinary m,a save krdo" implies it's a requirement.
-        return res.status(500).json({ success: false, message: "Image upload failed" });
+        console.error("Cloudinary Upload Error (Registration continuing without image):", error.message);
+        imageResult = null;
       }
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const code = Math.floor(100000 + Math.random() * 900000).toString();
 
-    await sendMail({
-      to: email,
-      subject: "Verify Account",
-      text: `Your verification code is ${code}`,
-    });
+    // Send email but don't fail registration if email fails
+    try {
+      await sendMail({
+        to: email,
+        subject: "Verify Account",
+        text: `Your verification code is: ${code}`,
+        html: `<h2>Email Verification</h2><p>Your verification code is: <strong>${code}</strong></p><p>This code will expire in 24 hours.</p>`,
+      });
+      console.log(`Verification email sent to ${email}`);
+    } catch (mailError) {
+      console.error("Email send failed (registration will still succeed):", mailError.message);
+    }
 
     console.log(`Verification code for ${email}: ${code}`);
 
@@ -78,7 +89,8 @@ export const registerUser = async (req, res) => {
       verifycode: code,
       verifycodeexp: Date.now() + 24 * 60 * 60 * 1000, // 1 day
       verifyuser: false,
-      public_id: imageResult?.public_id,
+      image: imageResult?.secure_url || null,
+      public_id: imageResult?.public_id || null,
     });
 
     res.status(201).json({
@@ -113,8 +125,9 @@ export const verifyuer = async (req, res) => {
     await user.save();
 
     res.json({ success: true, message: "Account verified successfully" });
-  } catch {
-    res.status(500).json({ success: false, message: "Server error" });
+  } catch (error) {
+    console.error("VERIFY ERROR:", error);
+    res.status(500).json({ success: false, message: "Server error: " + error.message });
   }
 };
 
@@ -125,7 +138,15 @@ export const login = async (req, res) => {
 
     const user = await User.findOne({ email });
     if (!user || !user.verifyuser) {
-      return res.status(400).json({ success: false, message: "User not registered" });
+      return res.status(400).json({ success: false, message: "User not registered or not verified" });
+    }
+
+    if (user.isGoogleUser && !user.password) {
+      return res.status(400).json({ success: false, message: "This account was registered via Google. Please log in with Google." });
+    }
+
+    if (!password || !user.password) {
+      return res.status(400).json({ success: false, message: "Invalid credentials" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -151,8 +172,9 @@ export const login = async (req, res) => {
         role: user.role,
       },
     });
-  } catch {
-    res.status(500).json({ success: false, message: "Server error" });
+  } catch (error) {
+    console.error("LOGIN ERROR:", error);
+    res.status(500).json({ success: false, message: "Server error: " + error.message });
   }
 };
 
@@ -182,8 +204,9 @@ export const forgotpassword = async (req, res) => {
     });
 
     res.json({ success: true, message: "Reset code sent to email" });
-  } catch {
-    res.status(500).json({ success: false, message: "Server error" });
+  } catch (error) {
+    console.error("FORGOT PASSWORD ERROR:", error);
+    res.status(500).json({ success: false, message: "Server error: " + error.message });
   }
 };
 
@@ -210,8 +233,9 @@ export const resetpassword = async (req, res) => {
     await user.save();
 
     res.json({ success: true, message: "Password reset successful" });
-  } catch {
-    res.status(500).json({ success: false, message: "Server error" });
+  } catch (error) {
+    console.error("RESET PASSWORD ERROR:", error);
+    res.status(500).json({ success: false, message: "Server error: " + error.message });
   }
 };
 
@@ -225,6 +249,10 @@ export const editprofile = async (req, res) => {
 
     let imageResult = null;
     if (req.file) {
+      if (req.file.size > 10 * 1024 * 1024) {
+        return res.status(400).json({ success: false, message: "Image size is too large. Maximum allowed size is 10MB. Please compress your image." });
+      }
+
       // Delete old image if exists
       if (user.public_id) {
         await cloudinary.uploader.destroy(user.public_id);
@@ -242,7 +270,12 @@ export const editprofile = async (req, res) => {
           Readable.from(req.file.buffer).pipe(stream);
         });
       };
-      imageResult = await uploadStream();
+      try {
+        imageResult = await uploadStream();
+      } catch (error) {
+        console.error("Cloudinary Upload Error (Profile Update continuing without image):", error.message);
+        imageResult = null;
+      }
     }
 
     user.name = name || user.name;
@@ -260,8 +293,8 @@ export const editprofile = async (req, res) => {
       data: user,
     });
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("EDIT PROFILE ERROR:", error);
+    res.status(500).json({ success: false, message: "Server error: " + error.message });
   }
 };
 
@@ -281,8 +314,9 @@ export const editpassword = async (req, res) => {
     await user.save();
 
     res.json({ success: true, message: "Password updated successfully" });
-  } catch {
-    res.status(500).json({ success: false, message: "Server error" });
+  } catch (error) {
+    console.error("EDIT PASSWORD ERROR:", error);
+    res.status(500).json({ success: false, message: "Server error: " + error.message });
   }
 };
 
@@ -345,8 +379,8 @@ export const resendCode = async (req, res) => {
 
     res.json({ success: true, message: "New code sent to email" });
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("RESEND CODE ERROR:", error);
+    res.status(500).json({ success: false, message: "Server error: " + error.message });
   }
 };
 
